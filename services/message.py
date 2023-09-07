@@ -1,4 +1,4 @@
-import re
+import re, asyncio
 
 from typing import Dict
 
@@ -9,7 +9,7 @@ from telethon.events import NewMessage
 
 from telethon.tl.custom import Message
 
-from services.url import is_twitter_url
+from services.url import is_modified_domain_url
 
 async def get_channel_messages(client: TelegramClient, event: NewMessage.Event) -> Dict[int, str]:
     if (not event.chat): raise EventChatNotFoundException
@@ -89,11 +89,23 @@ async def update_last_twitter_received_url(client: TelegramClient, event: NewMes
 
     if (not latest_message_id or not latest_message_text): raise CannotFindLastMessageException
 
-    if (not is_twitter_url(latest_message_text)): raise LatestMessageIsNotValidTwitterUrl
+    if (not is_modified_domain_url(latest_message_text, 'twitter.com')): raise LatestMessageIsNotValidTwitterUrl
+
+    await asyncio.sleep(1)
+
+    await original_message.delete()
+
+    command_arg = int(command_arg)
+    if (command_arg < 0):
+        return
 
     photo_pattern_route_regex = r'/photo/\d+$'
     latest_message_text_without_photo_route = re.sub(photo_pattern_route_regex, '', latest_message_text)
+
+    if (command_arg == 0):
+        await client.edit_message(entity=event.chat, message=latest_message_id, text=latest_message_text_without_photo_route)
+        return
+
     modified_url = f"{latest_message_text_without_photo_route}/photo/{command_arg}"
 
     await client.edit_message(entity=event.chat, message=latest_message_id, text=modified_url)
-    await original_message.delete()

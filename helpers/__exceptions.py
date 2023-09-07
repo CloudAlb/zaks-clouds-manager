@@ -3,8 +3,8 @@ class CommandArgsRequiredException(Exception):
         self.message = message
         super().__init__(self.message)
 
-class InvalidApiIdException(Exception):
-    def __init__(self, message="Invalid API ID exception"):
+class MissingDotEnvField(Exception):
+    def __init__(self, message="Attempted to retrieve data from \".env\" file but failed"):
         self.message = message
         super().__init__(self.message)
 

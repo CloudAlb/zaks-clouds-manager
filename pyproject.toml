@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 telethon = "^1.29.3"
 python-dotenv = "^1.0.0"
+python-telegram-bot = "^20.5"
 
 
 [build-system]

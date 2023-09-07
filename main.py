@@ -2,7 +2,7 @@ from dotenv import dotenv_values
 from telethon.tl.custom.message import Message
 
 import helpers.constants as constants
-from helpers.__exceptions import CommandArgsRequiredException, InvalidApiIdException, EventPatternMatchNotFoundException, MessageNotFoundException
+from helpers.__exceptions import CommandArgsRequiredException, MissingDotEnvField, EventPatternMatchNotFoundException, MessageNotFoundException
 
 from telethon import TelegramClient, events
 from telethon.events.messageedited import NewMessage
@@ -13,15 +13,23 @@ from services.url import modify_url_message
 config = dotenv_values(".env")
 
 api_id = config.get("API_ID")
-if (not api_id): raise InvalidApiIdException
+if (not api_id): raise MissingDotEnvField
 api_id_int = int(api_id)
 api_hash = str(config.get("API_HASH"))
 
-client = TelegramClient('me', api_id_int, api_hash)
+client_name_user=config.get('CLIENT_NAME_USER_DRAGONBELLY')
+client_name_bot=config.get('CLIENT_NAME_BOT_ZAK')
+
+if (not api_hash): raise MissingDotEnvField
+if (not client_name_user): raise MissingDotEnvField
+if (not client_name_bot): raise MissingDotEnvField
+
+client = TelegramClient(client_name_user, api_id_int, api_hash)
+bot = TelegramClient(client_name_bot, api_id_int, api_hash)
 
 @client.on(events.NewMessage(pattern=constants.URL_REGEX))
 async def modify_url_message_handler(event: NewMessage.Event):
-    await modify_url_message(client, event)
+    await modify_url_message(client, bot, event)
 
 @client.on(events.NewMessage(pattern='^/[a-zA-Z0-9_]+(\\s\\d+)?$'))
 async def get_command(event: NewMessage.Event):
@@ -52,4 +60,5 @@ async def get_command(event: NewMessage.Event):
             await update_last_twitter_received_url(client, event, command_args)
 
 client.start()
+bot.start()
 client.run_until_disconnected()
