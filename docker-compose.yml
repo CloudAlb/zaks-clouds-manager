@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  zaksCloudsManagerApp:
+    container_name: zak-clouds-manager-app
+    build: .
+    image: zak-clouds-manager-app:latest
+    restart: unless-stopped
+    environment:
+      - environment=development

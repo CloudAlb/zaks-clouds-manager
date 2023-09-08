@@ -1,3 +1,4 @@
+from datetime import date
 import re, asyncio
 
 from typing import Dict
@@ -10,6 +11,18 @@ from telethon.events import NewMessage
 from telethon.tl.custom import Message
 
 from services.url import is_modified_domain_url
+
+def is_event_message_date_before_bot_connection_date(message_event: NewMessage.Event, bot_connection_date: date):
+    if (not message_event.chat): raise EventChatNotFoundException
+
+    message: Message = message_event.message
+    if (not message): raise MessageNotFoundException
+
+    assert message.date
+
+    if message.date.now() < bot_connection_date:
+        return True
+    return False
 
 async def get_channel_messages(client: TelegramClient, event: NewMessage.Event) -> Dict[int, str]:
     if (not event.chat): raise EventChatNotFoundException
@@ -91,7 +104,7 @@ async def update_last_twitter_received_url(client: TelegramClient, event: NewMes
 
     if (not is_modified_domain_url(latest_message_text, 'twitter.com')): raise LatestMessageIsNotValidTwitterUrl
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.1)
 
     await original_message.delete()
 

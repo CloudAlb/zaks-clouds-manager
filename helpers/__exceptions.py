@@ -1,3 +1,8 @@
+class EnvironmentEnvVarNotDefined(Exception):
+    def __init__(self, message="The environment variable \"environment\" was not defined in the OS"):
+        self.message = message
+        super().__init__(self.message)
+
 class CommandArgsRequiredException(Exception):
     def __init__(self, message="Command arguments are required for this operation"):
         self.message = message

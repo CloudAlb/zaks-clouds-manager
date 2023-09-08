@@ -69,7 +69,7 @@ async def modify_url_message(client: TelegramClient, bot: TelegramClient, event:
     modified_url = apply_domain_modifications(original_message_text)
     if (not modified_url): raise UrlNotChangedException
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.1)
 
     if isinstance(event.chat, types.Channel):
         await original_message.delete()
