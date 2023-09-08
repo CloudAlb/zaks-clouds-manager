@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: zaks-clouds-manager-deployment-container
-          image: CloudAlb/zaks-clouds-manager:latest
+          image: CloudAlb/zaks-clouds-manager:main
           volumeMounts:
               - name: zaks-clouds-manager-secret-volume
                 mountPath: /secret
