@@ -6,17 +6,17 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zaks-clouds-manager-deployment
+      app: zaks-clouds-manager
   template:
     metadata:
       labels:
-        app: zaks-clouds-manager-deployment
+        app: zaks-clouds-manager
     spec:
       containers:
-        - name: zaks-clouds-manager-deployment-container
-          image: CloudAlb/zaks-clouds-manager:main
+        - name: zaks-clouds-manager-container
+          image: cloudalb/zaks-clouds-manager:main
           volumeMounts:
-              - name: zaks-clouds-manager-secret-volume
+              - name: zaks-clouds-manager-volume
                 mountPath: /secret
           env:
             - name: ENVIRONMENT
@@ -34,45 +34,3 @@ spec:
                 path: bot_token
               - key: PHONE_NUMBER
                 path: phone_number
----
-
-# zaks-clouds-manager-deployment-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: zaks-clouds-manager-deployment-service
-spec:
-  selector:
-    app: zaks-clouds-manager-deployment
-  ports:
-    - protocol: TCP
-      port: 80  # Port exposed within the cluster
-      targetPort: 80 # Port the pods are listening on
-  type: ClusterIP
-
----
-
-# zaks-clouds-manager-deployment-ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: zaks-clouds-manager-deployment-ingress
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: traefik
-  rules:
-    - host: cloud.pudim.xyz
-      http:
-        paths:
-          - pathType: Prefix
-            path: "/"
-            backend:
-              service:
-                name: zaks-clouds-manager-deployment-service
-                port:
-                  number: 80
-  tls:
-    - hosts:
-        - cloud.pudim.xyz
-      secretName: zaks-clouds-manager-deployment-tls  # Secret name for the TLS certificate
