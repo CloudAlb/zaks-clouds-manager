@@ -2,13 +2,13 @@ import re, asyncio
 
 from dotenv import dotenv_values
 
-from telethon import Button, TelegramClient
+from telethon import TelegramClient, Button
 from telethon.events import NewMessage
 from telethon.tl import types
 from telethon.tl.custom.message import Message
 
 import helpers.constants as constants
-from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundException, EventChatMessageNotFoundException, MissingDotEnvField
+from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundException, EventChatMessageNotFoundException
 
 config = dotenv_values(".env")
 
@@ -28,7 +28,7 @@ ALLOWED_DOMAIN_MODIFICATIONS = {
 }
 
 def is_url(text):
-    if (re.match(text, constants.URL_REGEX)):
+    if (re.match(constants.URL_REGEX, text)):
         return True
     return False
 

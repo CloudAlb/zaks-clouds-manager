@@ -9,7 +9,7 @@ from helpers.__exceptions import CommandArgsRequiredException, MissingDotEnvFiel
 from telethon import TelegramClient, events
 from telethon.events.messageedited import NewMessage
 
-from services.message import check_channel_messages_duplications, update_last_twitter_received_url
+from services.message import check_channel_messages_duplications, update_last_twitter_received_url, get_all_messages
 from services.url import modify_url_message
 
 environment = os.environ.get('ENVIRONMENT')
@@ -48,6 +48,7 @@ if (not phone_number): raise MissingDotEnvField
 
 api_id = int(api_id)
 api_hash = str(api_hash)
+bot_token = str(bot_token)
 
 client = TelegramClient('user', api_id, api_hash)
 bot = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
@@ -80,6 +81,8 @@ async def get_command(event: NewMessage.Event):
     if (command_args): print("Captured command args: {}".format(command_args))
 
     match command_str:
+        case 'get_all_messages':
+            await get_all_messages(client, bot, event)
         case 'check_channel_messages_duplications':
             print('Initializing "check_channel_messages_duplications" function')
             await check_channel_messages_duplications(client, event)
@@ -90,7 +93,7 @@ async def get_command(event: NewMessage.Event):
 def start():
     client.start()
     bot.start()
-    print("App started!")
+    print("🚀 App started!")
     client.run_until_disconnected()
 
 start()

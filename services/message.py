@@ -1,16 +1,17 @@
+import os, re, asyncio, tempfile
+
 from datetime import date
-import re, asyncio
 
 from typing import Dict
 
 from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundException
 
-from telethon import TelegramClient
+from telethon import TelegramClient, Button
 from telethon.events import NewMessage
-
 from telethon.tl.custom import Message
+from telethon.errors.rpcerrorlist import FilePartsInvalidError
 
-from services.url import is_modified_domain_url
+from services.url import is_modified_domain_url, is_url
 
 def is_event_message_date_before_bot_connection_date(message_event: NewMessage.Event, bot_connection_date: date):
     if (not message_event.chat): raise EventChatNotFoundException
@@ -62,12 +63,29 @@ async def check_channel_messages_duplications(client: TelegramClient, event: New
     await client.send_message(event.chat, 'There are duplicated messages in this channel.')
     for messages_ids, message_text in second_occurrence.items():
         original_message_id = list(first_occurrence.keys())[list(first_occurrence.values()).index(message_text)]
-        await client.send_message(event.chat, reply_to=original_message_id, message='This message right here:')
+        await client.send_message(
+            entity=event.chat,
+            message='This message right here',
+            reply_to=original_message_id
+        )
 
         for message_id in messages_ids:
-            await client.send_message(event.chat, reply_to=message_id, message='is duplicated by this one.')
-    await client.send_message(event.chat, 'End of duplicated messages.')
+            await client.send_message(
+                entity=event.chat,
+                message='is duplicated by this one:',
+                reply_to=message_id
+            )
 
+    await client.send_message(
+        entity=event.chat,
+        message='End of duplicated messages.'
+    )
+
+    await client.send_message(
+        entity=event.chat,
+        message='Click on this button to dismiss all the messages.',
+        buttons=[Button.text(text='Dismiss')]
+    )
 
 class CannotFindLastMessageException(Exception):
     def __init__(self, message="Cannot find last message sent by the user"):
@@ -122,3 +140,58 @@ async def update_last_twitter_received_url(client: TelegramClient, event: NewMes
     modified_url = f"{latest_message_text_without_photo_route}/photo/{command_arg}"
 
     await client.edit_message(entity=event.chat, message=latest_message_id, text=modified_url)
+
+async def get_all_messages(client: TelegramClient, bot: TelegramClient, event: NewMessage.Event):
+    if (not event.chat): raise EventChatNotFoundException
+
+    original_message: Message = event.message
+    if (not original_message): raise MessageNotFoundException
+    await original_message.delete()
+
+    loading_message = await client.send_message(
+        entity=event.chat,
+        message='Working on it...'
+    )
+
+    messages = await get_channel_messages(client, event)
+
+    _, temp_file = tempfile.mkstemp(prefix= 'channel_messages_', suffix=".txt", text=True)
+    try:
+        with open(temp_file, 'w') as file:
+            for message in messages.values():
+                if (not message): continue
+                if (not is_url(message)): continue
+
+                file.write(message + '\n')
+    except:
+        raise Exception
+
+    try:
+        if os.path.getsize(temp_file) == 0:
+            await client.send_message(
+                entity=event.chat,
+                message='Sorry, I was not able to retrieve any messages'
+            )
+            
+            return
+
+        await client.send_message(
+            entity=event.chat,
+            message='Done!'
+        )
+
+        await client.send_file(
+            entity=event.chat,
+            file=temp_file,
+            caption='Here are all the messages of this channel in a file'
+        )
+    except:
+        raise Exception
+    finally:
+        os.remove(temp_file)
+
+        await bot.send_message(
+            entity=event.chat.id,
+            message='Click on this button to dismiss all the messages.',
+            buttons=[Button.text(text='Dismiss')]
+        )
