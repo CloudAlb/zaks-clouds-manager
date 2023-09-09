@@ -47,7 +47,7 @@ def is_modified_domain_url(url, domain):
             return True
     return False
 
-def apply_domain_modifications(url):
+def apply_domain_modifications(url: str):
     for domain, modification in ALLOWED_DOMAIN_MODIFICATIONS.items():
         if re.match(f'^https?://(?:www\\.)?{domain}/.*$', url):
             modified_url = re.sub(f'^https?://(?:www\\.)?{domain}', f'https://{modification}{domain}', url)
