@@ -1,5 +1,5 @@
-import os
-from datetime import datetime
+import os, logging
+# from datetime import datetime
 from dotenv import dotenv_values
 from telethon.tl.custom.message import Message
 
@@ -8,8 +8,9 @@ from helpers.__exceptions import CommandArgsRequiredException, MissingDotEnvFiel
 
 from telethon import TelegramClient, events
 from telethon.events.messageedited import NewMessage
+from services.__utils__.types import assert_is_digit
 
-from services.message import check_channel_messages_duplications, update_last_twitter_received_url, get_all_messages_as_file, format_all_messages
+from services.message import check_channel_messages_duplications, search_message, update_last_twitter_received_url, get_all_messages_as_file, format_all_messages
 from services.url import modify_url_message
 
 environment = os.environ.get('ENVIRONMENT')
@@ -21,6 +22,8 @@ bot_token = None
 phone_number = None
 
 if (environment == 'development'):
+    logging.basicConfig(level=logging.DEBUG)
+
     config = dotenv_values(".env")
     api_id = config.get("API_ID")
     api_hash = config.get("API_HASH")
@@ -59,7 +62,7 @@ bot = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 async def modify_url_message_handler(event: NewMessage.Event):
     await modify_url_message(client, bot, event)
 
-@client.on(events.NewMessage(pattern='^/[a-zA-Z0-9_]+(\\s\\d+)?$'))
+@client.on(events.NewMessage(pattern=r'^/[a-zA-Z0-9_]+(\s[a-zA-Z0-9_]+)?$'))
 async def get_command(event: NewMessage.Event):
 
     if (not event.pattern_match): raise EventPatternMatchNotFoundException
@@ -86,11 +89,14 @@ async def get_command(event: NewMessage.Event):
         case 'format_all_messages':
             await format_all_messages(client, event)
         case 'check_channel_messages_duplications':
-            print('Initializing "check_channel_messages_duplications" function')
             await check_channel_messages_duplications(client, event)
         case 'twitter':
             if (not command_args): raise CommandArgsRequiredException
+            assert_is_digit(command_args)
             await update_last_twitter_received_url(client, event, command_args)
+        case 'search':
+            if (not command_args): raise CommandArgsRequiredException
+            await search_message(client, event, command_args)
 
 def start():
     client.start()

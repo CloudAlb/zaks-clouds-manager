@@ -9,14 +9,13 @@ from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundExce
 from telethon import TelegramClient, Button
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
+from services.__utils__.message import get_message_from_event, send_working_on_it_message
+from services.chat import get_chat_from_event
 
 from services.url import apply_domain_modifications, is_modified_domain_url, is_url
 
-def is_event_message_date_before_bot_connection_date(message_event: NewMessage.Event, bot_connection_date: date):
-    if (not message_event.chat): raise EventChatNotFoundException
-
-    message: Message = message_event.message
-    if (not message): raise MessageNotFoundException
+def is_event_message_date_before_bot_connection_date(message_event: NewMessage.Event, bot_connection_date: date) -> bool:
+    message = get_message_from_event(message_event)
 
     assert message.date
 
@@ -95,15 +94,13 @@ class LatestMessageIsNotValidTwitterUrl(Exception):
         super().__init__(self.message)
 
 async def update_last_twitter_received_url(client: TelegramClient, event: NewMessage.Event, command_arg):
-    if (not event.chat): raise EventChatNotFoundException
-
-    original_message: Message = event.message
-    if (not original_message): raise MessageNotFoundException
+    chat = get_chat_from_event(event)
+    original_message = get_message_from_event(event)
 
     latest_message_id = None
     latest_message_text = None
     async for message in client.iter_messages(
-        entity=event.chat,
+        entity=chat,
         from_user='me',
         limit=1,
         offset_date=None,
@@ -131,16 +128,15 @@ async def update_last_twitter_received_url(client: TelegramClient, event: NewMes
     latest_message_text_without_photo_route = re.sub(photo_pattern_route_regex, '', latest_message_text)
 
     if (command_arg == 0):
-        await client.edit_message(entity=event.chat, message=latest_message_id, text=latest_message_text_without_photo_route)
+        await client.edit_message(entity=chat, message=latest_message_id, text=latest_message_text_without_photo_route)
         return
 
     modified_url = f"{latest_message_text_without_photo_route}/photo/{command_arg}"
 
-    await client.edit_message(entity=event.chat, message=latest_message_id, text=modified_url)
+    await client.edit_message(entity=chat, message=latest_message_id, text=modified_url)
 
 async def get_all_messages_as_file(client: TelegramClient, bot: TelegramClient, event: NewMessage.Event):
-    if (not event.chat): raise EventChatNotFoundException
-    chat = event.chat
+    chat = await get_chat_from_event(event)
 
     original_message: Message = event.message
     if (not original_message): raise MessageNotFoundException
@@ -148,10 +144,7 @@ async def get_all_messages_as_file(client: TelegramClient, bot: TelegramClient, 
 
     messages = await get_channel_messages(client, chat)
 
-    working_on_it_message = await client.send_message(
-        entity=chat,
-        message='Working on it...'
-    )
+    working_on_it_message = await send_working_on_it_message(client, chat)
 
     _, temp_file = tempfile.mkstemp(prefix= 'channel_messages_', suffix=".txt", text=True)
 
@@ -195,22 +188,16 @@ async def get_all_messages_as_file(client: TelegramClient, bot: TelegramClient, 
         os.remove(temp_file)
 
 async def format_all_messages(client: TelegramClient, event: NewMessage.Event):
-    if (not event.chat): raise EventChatNotFoundException
-    chat = event.chat
+    chat = get_chat_from_event(event)
 
-    original_message: Message = event.message
+    original_message = get_message_from_event(event)
     await original_message.delete()
 
-    working_on_it_message = await client.send_message(
-        entity=chat,
-        message='Working on it...'
-    )
+    working_on_it_message = await send_working_on_it_message(client, chat)
 
-    if (not original_message): raise MessageNotFoundException
     messages = await get_channel_messages(client, chat)
 
     modified_messages = {}
-
     for message_id, message_text in messages.items():
         modified_text = apply_domain_modifications(message_text)
 
@@ -232,7 +219,7 @@ async def format_all_messages(client: TelegramClient, event: NewMessage.Event):
     if (not len(modified_messages)):
         await client.send_message(
             entity=chat,
-            message='No messages were affected.'
+            message='no messages were affected.'
         )
 
         return
@@ -250,6 +237,56 @@ async def format_all_messages(client: TelegramClient, event: NewMessage.Event):
     for message_id, new_message in modified_messages.items():
         await client.send_message(
             entity=chat,
+            message=f'id: {message_id}',
+            reply_to=message_id
+        )
+
+async def search_message(client: TelegramClient, event: NewMessage.Event, string_to_search: str):
+    chat = get_chat_from_event(event)
+    messages = await get_channel_messages(client, chat)
+
+    filtered_messages = {}
+
+    for message_id, message_text in messages.items():
+        if (string_to_search in message_text.lower()):
+            filtered_messages[message_id] = message_text
+
+    if (not filtered_messages):
+        await client.send_message(
+            entity=chat,
+            message=f'I could not find any messages with the \'{string_to_search}\' string'
+        )
+        
+        return
+
+    filtered_messages_len = len(filtered_messages)
+    filtered_messages_len_threshold = 15
+    if (filtered_messages_len > filtered_messages_len_threshold):
+        await client.send_message(
+            entity=chat,
+            message=f'There are {filtered_messages_len} messages that were filtered by the \'{string_to_search}\' string, which is more than the {filtered_messages_len_threshold} threshold configured for this function.'
+        )
+        
+        return
+
+    await client.send_message(
+        entity=chat,
+        message='Done!'
+    )
+
+    await client.send_message(
+        entity=chat,
+        message=f'Here are the messages I could find with the \'{string_to_search}\' string:'
+    )
+
+    for message_id, message_text in filtered_messages.items():
+        await client.send_message(
+            entity=chat,
             message=f'ID: {message_id}',
             reply_to=message_id
         )
+
+    await client.send_message(
+        entity=chat,
+        message='Done!'
+    )

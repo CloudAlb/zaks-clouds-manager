@@ -7,8 +7,10 @@ from telethon.events import NewMessage
 from telethon.tl import types
 from telethon.tl.custom.message import Message
 
+from services.chat import get_chat_from_event
+
 import helpers.constants as constants
-from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundException, EventChatMessageNotFoundException
+from helpers.__exceptions import MessageNotFoundException, EventChatMessageNotFoundException
 
 config = dotenv_values(".env")
 
@@ -56,7 +58,7 @@ def apply_domain_modifications(url: str):
     return False
 
 async def modify_url_message(client: TelegramClient, bot: TelegramClient, event: NewMessage.Event):
-    if (not event.chat): raise EventChatNotFoundException
+    chat = await get_chat_from_event(event)
 
     original_message: Message = event.message
     if (not original_message): raise MessageNotFoundException
@@ -71,17 +73,17 @@ async def modify_url_message(client: TelegramClient, bot: TelegramClient, event:
 
     await asyncio.sleep(0.1)
 
-    if isinstance(event.chat, types.Channel):
+    if isinstance(chat, types.Channel):
         await original_message.delete()
 
         await bot.send_message(
-            entity=event.chat.id,
+            entity=chat.id,
             message=modified_url,
             buttons=[Button.url(text='Source', url=original_message_text.split("?")[0])]
         )
     else:
         # await client.edit_message(
-        #     entity=event.chat,
+        #     entity=chat,
         #     message=original_message,
         #     text=modified_url,
         #     buttons=message_buttons

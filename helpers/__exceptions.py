@@ -8,6 +8,11 @@ class CommandArgsRequiredException(Exception):
         self.message = message
         super().__init__(self.message)
 
+class InvalidCommandArgsException(Exception):
+    def __init__(self, message="The command arguments for this command are invalid!"):
+        self.message = message
+        super().__init__(self.message)
+
 class MissingDotEnvField(Exception):
     def __init__(self, message="Attempted to retrieve data from \".env\" file but failed"):
         self.message = message
