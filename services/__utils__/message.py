@@ -11,7 +11,15 @@ def get_message_from_event(event):
 async def send_working_on_it_message(client, chat):
     working_on_it_message = await client.send_message(
         entity=chat,
-        message='working on it...'
+        message='Working on it...'
+    )
+
+    return working_on_it_message
+
+async def send_done_message(client, chat):
+    working_on_it_message = await client.send_message(
+        entity=chat,
+        message='Done!'
     )
 
     return working_on_it_message

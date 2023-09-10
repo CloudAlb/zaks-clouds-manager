@@ -4,12 +4,12 @@ from datetime import date
 
 from typing import Dict
 
-from helpers.__exceptions import EventChatNotFoundException, MessageNotFoundException
+from helpers.__exceptions import MessageNotFoundException
 
 from telethon import TelegramClient, Button
 from telethon.events import NewMessage
 from telethon.tl.custom import Message
-from services.__utils__.message import get_message_from_event, send_working_on_it_message
+from services.__utils__.message import get_message_from_event, send_done_message, send_working_on_it_message
 from services.chat import get_chat_from_event
 
 from services.url import apply_domain_modifications, is_modified_domain_url, is_url
@@ -172,10 +172,7 @@ async def get_all_messages_as_file(client: TelegramClient, bot: TelegramClient, 
             
             return
 
-        await client.send_message(
-            entity=chat,
-            message='Done!'
-        )
+        await send_done_message(client, chat)
 
         await client.send_file(
             entity=chat,
@@ -219,15 +216,12 @@ async def format_all_messages(client: TelegramClient, event: NewMessage.Event):
     if (not len(modified_messages)):
         await client.send_message(
             entity=chat,
-            message='no messages were affected.'
+            message='No messages were affected.'
         )
 
         return
 
-    await client.send_message(
-        entity=chat,
-        message='Done!'
-    )
+    await send_done_message(client, chat)
 
     await client.send_message(
         entity=chat,
@@ -242,7 +236,13 @@ async def format_all_messages(client: TelegramClient, event: NewMessage.Event):
         )
 
 async def search_message(client: TelegramClient, event: NewMessage.Event, string_to_search: str):
+    original_message = get_message_from_event(event)
     chat = get_chat_from_event(event)
+
+    await original_message.delete()
+
+    working_on_it_message = await send_working_on_it_message(client, chat)
+
     messages = await get_channel_messages(client, chat)
 
     filtered_messages = {}
@@ -251,28 +251,33 @@ async def search_message(client: TelegramClient, event: NewMessage.Event, string
         if (string_to_search in message_text.lower()):
             filtered_messages[message_id] = message_text
 
+    await client.delete_messages(
+        entity=chat,
+        message_ids=working_on_it_message
+    )
+
     if (not filtered_messages):
         await client.send_message(
             entity=chat,
-            message=f'I could not find any messages with the \'{string_to_search}\' string'
+            message=f'I could not find any messages with the \'{string_to_search}\' string.'
         )
         
         return
+
+    filtered_messages.popitem()
 
     filtered_messages_len = len(filtered_messages)
     filtered_messages_len_threshold = 15
     if (filtered_messages_len > filtered_messages_len_threshold):
         await client.send_message(
             entity=chat,
-            message=f'There are {filtered_messages_len} messages that were filtered by the \'{string_to_search}\' string, which is more than the {filtered_messages_len_threshold} threshold configured for this function.'
+            message=f'There are {filtered_messages_len} messages that were filtered by the \'{string_to_search}\' string, which \
+                is more than the {filtered_messages_len_threshold} threshold configured for this function.'
         )
         
         return
 
-    await client.send_message(
-        entity=chat,
-        message='Done!'
-    )
+    await send_done_message(client, chat)
 
     await client.send_message(
         entity=chat,
@@ -286,7 +291,4 @@ async def search_message(client: TelegramClient, event: NewMessage.Event, string
             reply_to=message_id
         )
 
-    await client.send_message(
-        entity=chat,
-        message='Done!'
-    )
+    await send_done_message(client, chat)

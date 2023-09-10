@@ -58,7 +58,7 @@ def apply_domain_modifications(url: str):
     return False
 
 async def modify_url_message(client: TelegramClient, bot: TelegramClient, event: NewMessage.Event):
-    chat = await get_chat_from_event(event)
+    chat = get_chat_from_event(event)
 
     original_message: Message = event.message
     if (not original_message): raise MessageNotFoundException
