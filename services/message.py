@@ -136,7 +136,7 @@ async def update_last_twitter_received_url(client: TelegramClient, event: NewMes
     await client.edit_message(entity=chat, message=latest_message_id, text=modified_url)
 
 async def get_all_messages_as_file(client: TelegramClient, bot: TelegramClient, event: NewMessage.Event):
-    chat = await get_chat_from_event(event)
+    chat = get_chat_from_event(event)
 
     original_message: Message = event.message
     if (not original_message): raise MessageNotFoundException
